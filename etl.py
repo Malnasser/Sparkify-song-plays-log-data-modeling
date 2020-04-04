@@ -4,23 +4,37 @@ import psycopg2
 import pandas as pd
 from sql_queries import *
 
+"""
+    This procedure processes a song file whose filepath has been provided as an arugment.
+    It extracts the song information in order to store it into the songs table.
+    Then it extracts the artist information in order to store it into the artists table.
 
+    INPUTS: 
+    * cur the cursor variable
+    * filepath the file path to the song file
+"""
 def process_song_file(cur, filepath):
-    
-    print(filepath)
     
     # open song file
     df = pd.read_json(filepath, typ='series')
     
     # insert song record
     song_data = list(df[['song_id', 'title', 'artist_id', 'year', 'duration']])
-    print(song_data)
     cur.execute(song_table_insert, song_data)
     
-    # insert artist record
+     # insert artist record
     artist_data = list(df[['artist_id', 'artist_name', 'artist_location', 'artist_latitude', 'artist_longitude']])
     cur.execute(artist_table_insert, artist_data)
 
+"""
+    This procedure processes a data log file whose filepath has been provided as an arugment.
+    It filter data by nextSong action and extracts the information in order to store it into the user,
+    process time info for table, and extracts the information in order to store it into the user,
+    and process information for songplays 
+    INPUTS: 
+    * cur the cursor variable
+    * filepath the file path to the song file
+"""
 def process_log_file(cur, filepath):
     # open log file
     df = pd.read_json(filepath, lines=True)
@@ -44,7 +58,7 @@ def process_log_file(cur, filepath):
 
     # insert user records
     for i, row in user_df.iterrows():
-        cur.execute(user_table_insert, row)
+        cur.execute(user_table_insert, list(row))
     
     # insert songplay records
     for index, row in df.iterrows():
@@ -56,14 +70,23 @@ def process_log_file(cur, filepath):
         if results:
             songid, artistid = results
         else:
-            songid, artistid = None, None
+            return
 
         # insert songplay record
         songplay_data = (time_df.timestamp[index], row.userId, row.level, songid, artistid, row.sessionId, row.location, row.userAgent)
         cur.execute(songplay_table_insert, songplay_data)
 
+"""
+    This procedure processes a song file whose filepath has been provided as an arugment.
+    It extracts the song information in order to store it into the songs table.
+    Then it extracts the artist information in order to store it into the artists table.
 
-def process_data(cur, conn, filepath, func):
+    INPUTS: 
+    * cur the cursor variable
+    * filepath the file path to data files
+    * func the function to porcess data files files
+"""
+def process_data(cur, filepath, func):
     # get all files matching extension from directory
     all_files = []
     for root, dirs, files in os.walk(filepath):
@@ -86,8 +109,8 @@ def main():
     conn = psycopg2.connect("host=127.0.0.1 dbname=sparkifydb user=student password=student")
     cur = conn.cursor()
 
-    process_data(cur, conn, filepath='data/song_data', func=process_song_file)
-    process_data(cur, conn, filepath='data/log_data', func=process_log_file)
+    process_data(cur,  filepath='data/song_data', func=process_song_file)
+    process_data(cur,  filepath='data/log_data', func=process_log_file)
 
     conn.close()
 
